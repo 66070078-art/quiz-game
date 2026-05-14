@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>เกมตอบคำถามครีมกันแดดกับสิ่งแวดล้อม</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: linear-gradient(135deg,#8ee3f5,#b8f7d4); margin: 0; padding: 20px; }
+    .card { max-width: 800px; margin: auto; background: white; border-radius: 20px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+    h1 { text-align: center; }
+    .question { margin: 18px 0; padding: 16px; background: #f7f9fc; border-radius: 12px; }
+    button { background:#2563eb; color:white; border:none; padding:12px 18px; border-radius:10px; cursor:pointer; font-size:16px; }
+    button:hover { opacity:.95; }
+    input[type="text"], input[type="email"] { width: 100%; padding: 10px; margin: 8px 0 14px; border-radius: 8px; border: 1px solid #ccc; }
+    #quizSection { display:none; }
+    #result { font-size: 20px; font-weight: bold; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎮 เกมตอบคำถาม: ครีมกันแดดกับสิ่งแวดล้อม</h1>
+
+    <div id="userSection">
+      <label>ชื่อ–นามสกุล</label>
+      <input id="fullname" type="text" required />
+      <label>อีเมล</label>
+      <input id="email" type="email" required />
+      <button onclick="startQuiz()">เริ่มทำแบบทดสอบ</button>
+    </div>
+
+    <div id="quizSection">
+      <form id="quizForm"></form>
+      <button onclick="submitQuiz()">ส่งคำตอบ</button>
+      <div id="result"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    // 1) ติดตั้ง Firebase โปรเจกต์ที่ https://firebase.google.com
+    // 2) นำค่าจาก Project settings มาใส่แทนด้านล่าง
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: 'YOUR_API_KEY',
+      authDomain: 'YOUR_PROJECT.firebaseapp.com',
+      projectId: 'YOUR_PROJECT_ID',
+      storageBucket: 'YOUR_PROJECT.appspot.com',
+      messagingSenderId: 'YOUR_SENDER_ID',
+      appId: 'YOUR_APP_ID'
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const questions = [
+      { q: 'สาร Oxybenzone และสาร Octinoxate ในครีมกันแดดเป็นสารที่ส่งผลกระทบต่อปะการังทำให้ปะการังฟอกขาว', a: 'ถูก' },
+      { q: 'ประเทศไทยมีกฎหมายด้านสิ่งแวดล้อมห้ามนำและใช้ครีมกันแดดที่มีส่วนผสมของสารเคมีที่ทำลายปะการังเข้าไปในเขตอุทยานแห่งชาติ', a: 'ถูก' },
+      { q: 'การทาครีมกันแดดก่อนลงน้ำทะเลไม่มีผลกระทบต่อสิ่งแวดล้อม', a: 'ผิด' },
+      { q: 'การสวมเสื้อผ้าป้องกันแสงแดดสามารถช่วยลดการใช้ครีมกันแดดได้', a: 'ถูก' },
+      { q: 'สารเคมีจากครีมกันแดดสามารถปะปนลงสู่ทะเลได้เมื่อผู้ใช้ลงเล่นน้ำ', a: 'ถูก' },
+      { q: 'การอ่านฉลากส่วนผสมของครีมกันแดดสามารถช่วยเลือกผลิตภัณฑ์ที่เป็นมิตรต่อทะเลได้', a: 'ถูก' },
+      { q: 'การเลือกใช้ครีมกันแดดชนิด Physical sunscreen ช่วยลดผลกระทบต่อระบบนิเวศทางทะเลได้', a: 'ผิด' }
+    ];
+
+    const quizForm = document.getElementById('quizForm');
+
+    window.startQuiz = function() {
+      const fullname = document.getElementById('fullname').value.trim();
+      const email = document.getElementById('email').value.trim();
+      if (!fullname || !email) return alert('กรุณากรอกชื่อและอีเมลก่อน');
+
+      document.getElementById('userSection').style.display = 'none';
+      document.getElementById('quizSection').style.display = 'block';
+
+      quizForm.innerHTML = '';
+      questions.forEach((item, i) => {
+        quizForm.innerHTML += `
+          <div class="question">
+            <p>${i + 1}. ${item.q}</p>
+            <label><input type="radio" name="q${i}" value="ถูก"> ถูก</label>
+            <label><input type="radio" name="q${i}" value="ผิด"> ผิด</label>
+          </div>`;
+      });
+    }
+
+    window.submitQuiz = async function() {
+      let score = 0;
+      questions.forEach((item, i) => {
+        const ans = document.querySelector(`input[name="q${i}"]:checked`);
+        if (ans && ans.value === item.a) score++;
+      });
+
+      const fullname = document.getElementById('fullname').value.trim();
+      const email = document.getElementById('email').value.trim();
+
+      await addDoc(collection(db, 'quiz_results'), {
+        fullname,
+        email,
+        score,
+        total: questions.length,
+        submittedAt: serverTimestamp()
+      });
+
+      document.getElementById('result').textContent = `คุณได้ ${score}/${questions.length} คะแนน (บันทึกผลเรียบร้อย)`;
+    }
+  </script>
+</body>
+</html>
